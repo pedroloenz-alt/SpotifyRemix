@@ -726,46 +726,22 @@
         return f;
       }
 
-      var hlsLoader;
-
-      function loadHls() {
-        if (window.Hls) return Promise.resolve(window.Hls);
-        if (hlsLoader) return hlsLoader;
-        hlsLoader = new Promise(function (resolve, reject) {
-          var script = document.createElement('script');
-          script.src = 'https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js';
-          script.onload = function () { resolve(window.Hls); };
-          script.onerror = reject;
-          document.head.appendChild(script);
-        });
-        return hlsLoader;
-      }
-
       function videoBlock(src, height, ratio) {
         var block = document.createElement('div');
         block.className = 'vsl-block';
         block.setAttribute('aria-label', 'Video');
         if (ratio) block.style.aspectRatio = ratio;
         else block.style.height = height + 'px';
-        var video = document.createElement('video');
-        video.controls = true;
-        video.playsInline = true;
-        video.preload = 'metadata';
-        video.setAttribute('aria-label', 'Video explicativo');
-        if (video.canPlayType('application/vnd.apple.mpegurl')) {
-          video.src = src;
-        } else {
-          loadHls().then(function (Hls) {
-            if (Hls && Hls.isSupported()) {
-              var hls = new Hls();
-              hls.loadSource(src);
-              hls.attachMedia(video);
-            } else {
-              video.src = src;
-            }
-          }).catch(function () { video.src = src; });
-        }
-        block.appendChild(video);
+        var playbackId = src.split('/').pop().replace(/\.m3u8(?:\?.*)?$/, '');
+        var player = document.createElement('iframe');
+        player.src = 'https://player.mux.com/' + encodeURIComponent(playbackId);
+        player.title = 'Vídeo explicativo';
+        player.setAttribute('frameborder', '0');
+        player.setAttribute('allow', 'accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;');
+        player.setAttribute('allowfullscreen', '');
+        player.style.width = '100%';
+        player.style.height = '100%';
+        block.appendChild(player);
         botRow(block, 'media');
       }
 
