@@ -337,8 +337,35 @@
       display: flex;
       width: 100%;
       flex: 0 0 auto;
+      position: relative;
       overflow: hidden;
       background: #000;
+    }
+
+    .vsl-block mux-player {
+      display: block;
+      width: 100%;
+      height: 100%;
+      --controls: none;
+      --media-object-fit: contain;
+    }
+
+    .vsl-tap-target {
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      width: 100%;
+      height: 100%;
+      padding: 0;
+      border: 0;
+      background: transparent;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+
+    .vsl-tap-target:focus-visible {
+      outline: 3px solid #1DB954;
+      outline-offset: -4px;
     }
 
     .bubble.media iframe.withdraw-receipt {
@@ -514,6 +541,7 @@
     }
   </style>
   <link rel="preload" as="image" href="/sp/type/avatar.png">
+  <script src="https://cdn.jsdelivr.net/npm/@mux/mux-player" defer></script>
 
 
 </head>
@@ -732,17 +760,44 @@
         block.setAttribute('aria-label', 'Video');
         block.style.aspectRatio = ratio;
         var playbackId = src.split('/').pop().replace(/\.m3u8(?:\?.*)?$/, '');
-        var player = document.createElement('iframe');
-        var encodedTitle = title.replace(/ /g, '+');
-        player.src = 'https://player.mux.com/' + encodeURIComponent(playbackId) + '?metadata-video-title=' + encodedTitle + '&video-title=' + encodedTitle;
-        player.title = title;
-        player.setAttribute('frameborder', '0');
-        player.setAttribute('allow', 'accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;');
-        player.setAttribute('allowfullscreen', '');
-        player.style.width = '100%';
-        player.style.height = '100%';
+        var player = document.createElement('mux-player');
+        player.setAttribute('playback-id', playbackId);
+        player.setAttribute('metadata-video-title', title);
+        player.setAttribute('title', title);
+        player.setAttribute('autoplay', '');
+        player.setAttribute('max-auto-resolution', '720p');
+        player.setAttribute('preload', 'auto');
+
+        var tapTarget = document.createElement('button');
+        tapTarget.type = 'button';
+        tapTarget.className = 'vsl-tap-target';
+        tapTarget.setAttribute('aria-label', 'Reproduzir vídeo com som');
+        tapTarget.addEventListener('click', async function () {
+          await customElements.whenDefined('mux-player');
+          player.muted = false;
+          if (player.ended) player.currentTime = 0;
+          if (player.paused) {
+            try { await player.play(); } catch (err) {}
+          } else {
+            player.pause();
+          }
+          tapTarget.setAttribute('aria-label', player.paused ? (player.ended ? 'Reiniciar vídeo' : 'Continuar vídeo') : 'Pausar vídeo');
+        });
+        player.addEventListener('ended', function () {
+          player.pause();
+          tapTarget.setAttribute('aria-label', 'Reiniciar vídeo');
+        });
+
         block.appendChild(player);
+        block.appendChild(tapTarget);
         botRow(block, 'media');
+
+        customElements.whenDefined('mux-player').then(function () {
+          try {
+            var attempt = player.play();
+            if (attempt && typeof attempt.catch === 'function') attempt.catch(function () {});
+          } catch (err) {}
+        });
       }
 
 
