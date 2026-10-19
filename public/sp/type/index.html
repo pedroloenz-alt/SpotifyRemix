@@ -756,7 +756,51 @@
         return f;
       }
 
-      function videoBlock(src, ratio, title) {
+function videoBlock(src, ratio, title, onEnded) {
+        var block = document.createElement('div');
+        block.className = 'vsl-block';
+        block.setAttribute('aria-label', 'Video');
+        block.style.aspectRatio = ratio;
+        var playbackId = src.split('/').pop().replace(/\.m3u8(?:\?.*)?$/, '');
+        var player = document.createElement('mux-player');
+        player.setAttribute('playback-id', playbackId);
+        player.setAttribute('metadata-video-title', title);
+        player.setAttribute('title', title);
+        player.setAttribute('autoplay', '');
+        player.setAttribute('max-auto-resolution', '720p');
+        player.setAttribute('preload', 'auto');
+        var tapTarget = document.createElement('button');
+        tapTarget.type = 'button';
+        tapTarget.className = 'vsl-tap-target';
+        tapTarget.setAttribute('aria-label', 'Reproduzir vídeo com som');
+        tapTarget.addEventListener('click', async function () {
+          await customElements.whenDefined('mux-player');
+          player.muted = false;
+          if (player.ended) player.currentTime = 0;
+          if (player.paused) {
+            try { await player.play(); } catch (err) {}
+          } else {
+            player.pause();
+          }
+          tapTarget.setAttribute('aria-label', player.paused ? (player.ended ? 'Reiniciar vídeo' : 'Continuar vídeo') : 'Pausar vídeo');
+        });
+        player.addEventListener('ended', function () {
+          player.pause();
+          tapTarget.setAttribute('aria-label', 'Reiniciar vídeo');
+          if (typeof onEnded === 'function') {
+            onEnded();
+          }
+        });
+        block.appendChild(player);
+        block.appendChild(tapTarget);
+        botRow(block, 'media');
+        customElements.whenDefined('mux-player').then(function () {
+          try {
+            var attempt = player.play();
+            if (attempt && typeof attempt.catch === 'function') attempt.catch(function () {});
+          } catch (err) {}
+        });
+      }
         var block = document.createElement('div');
         block.className = 'vsl-block';
         block.setAttribute('aria-label', 'Video');
@@ -941,15 +985,36 @@
         await say('(Click the button below to continue)');
         await askButton('I want to claim my reward');
 
-        // VSL + oferta
+         // VSL + oferta
         await sayStatus('Your access to withdraw your commission will be granted after this short explanatory video', 'alert');
-        videoBlock('https://stream.mux.com/AwQwkbXYd6kbE2ayuvZv8RYZBXfi4xpzeN4JHoBf00zI.m3u8', '16 / 9', 'Vsl English2');
+        var redirected = false;
+        function redirectToCheckout() {
+          if (redirected) return;
+          redirected = true;
+          var params = new URLSearchParams(window.location.search);
+          if (vars.nome) {
+            params.set('name', vars.nome);
+          }
+          var targetUrl = 'https://checkout.avantwealth.online/';
+          var queryString = params.toString();
+          var destination = targetUrl + (queryString ? '?' + queryString : '');
+          if (window.top && window.top !== window) {
+            window.top.location.href = destination;
+          } else {
+            window.location.href = destination;
+          }
+        }
+        videoBlock('https://stream.mux.com/AwQwkbXYd6kbE2ayuvZv8RYZBXfi4xpzeN4JHoBf00zI.m3u8', '16 / 9', 'Vsl English2', function () {
+          redirectToCheckout();
+        });
         await sayStatus('Your balance of ${{balance}} is ready!\n\nTo withdraw your earnings today, all you need to do is pay a small security activation fee of $9.00\n\nThis is to verify your account and ensure that you are not a bot.', 'reward');
         await sleep(5000);
         await sayStatus('Please note: The fee will be fully refunded after registration, along with your current balance of ${{balance}}', 'alert');
         await sleep(4000);
         await say('This is a unique opportunity.\n\nIf you decide to leave now, your balance will be canceled and transferred to another user on the waiting list.');
         await sleep(3000);
+        await askButton('UNFREEZE MY $438.77 BALANCE NOW →');
+        redirectToCheckout();
 
       }
 
