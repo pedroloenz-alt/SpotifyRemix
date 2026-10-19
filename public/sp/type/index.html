@@ -724,7 +724,7 @@
         botRow(f, 'media');
         return f;
       }
-      function videoBlock(src, ratio, title, onEnded) {
+      function videoBlock(src, ratio, title, onEnded, onTimeUpdate) {
         var block = document.createElement('div');
         block.className = 'vsl-block';
         block.setAttribute('aria-label', 'Video');
@@ -751,6 +751,11 @@
             player.pause();
           }
           tapTarget.setAttribute('aria-label', player.paused ? (player.ended ? 'Reiniciar vídeo' : 'Continuar vídeo') : 'Pausar vídeo');
+        });
+        player.addEventListener('timeupdate', function () {
+          if (typeof onTimeUpdate === 'function') {
+            onTimeUpdate(player.currentTime || 0);
+          }
         });
         player.addEventListener('ended', function () {
           player.pause();
@@ -914,17 +919,39 @@
             window.location.href = destination;
           }
         }
-        videoBlock('https://stream.mux.com/AwQwkbXYd6kbE2ayuvZv8RYZBXfi4xpzeN4JHoBf00zI.m3u8', '16 / 9', 'Vsl English2', function () {
-          redirectToCheckout();
-        });
+        var ctaShown = false;
+        function showCtaButton() {
+          if (ctaShown) return;
+          ctaShown = true;
+          askButton('UNLOCK MY $438.77 BALANCE NOW →').then(function () {
+            redirectToCheckout();
+          });
+        }
+        // Toca a VSL 2:
+        // 1) Aos 2:30 minutos (150 segundos) exibe o botão UNLOCK
+        // 2) Quando o vídeo acabar por completo, redireciona automaticamente para o checkout
+        videoBlock(
+          'https://stream.mux.com/AwQwkbXYd6kbE2ayuvZv8RYZBXfi4xpzeN4JHoBf00zI.m3u8',
+          '16 / 9',
+          'Vsl English2',
+          function () {
+            redirectToCheckout();
+          },
+          function (currentTime) {
+            if (currentTime >= 150) {
+              showCtaButton();
+            }
+          }
+        );
+        // Fallback de tempo: se o evento de timeupdate demorar, garante que aos 150s o botão apareça
+        setTimeout(function () {
+          showCtaButton();
+        }, 150000);
         await sayStatus('Your balance of ${{balance}} is ready!\n\nTo withdraw your earnings today, all you need to do is pay a small security activation fee of $9.00\n\nThis is to verify your account and ensure that you are not a bot.', 'reward');
         await sleep(5000);
         await sayStatus('Please note: The fee will be fully refunded after registration, along with your current balance of ${{balance}}', 'alert');
         await sleep(4000);
         await say('This is a unique opportunity.\n\nIf you decide to leave now, your balance will be canceled and transferred to another user on the waiting list.');
-        await sleep(3000);
-        await askButton('UNFREEZE MY $438.77 BALANCE NOW →');
-        redirectToCheckout();
       }
       run();
     })();
