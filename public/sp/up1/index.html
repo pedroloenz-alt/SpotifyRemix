@@ -333,7 +333,7 @@
           var extraParams = {};
           urlParams.forEach(function (val, key) { extraParams[key] = val; });
 
-          fetch('https://checkout.avantwealth.online/api/stripe-charge-upsell' + (window.location.search || ''), {
+          fetch('https://checkout.avantwealth.online/api/stripe-charge-upsell', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -351,9 +351,7 @@
             if (bar) bar.style.width = '100%';
             if (count) count.textContent = 'Verified!';
             setTimeout(function () {
-              // Se foi aprovado e o Worker gerou a URL para o Upsell 2, segue para ele.
-              // Caso tenha sido recusado ou devolvido outra URL, AINDA ASSIM avança para o Upsell 2 com os dados do cliente!
-              if (data && data.status === 'succeeded' && data.next_url && data.next_url.indexOf('/sp/up2/') !== -1) {
+              if (data && data.next_url) {
                 window.location.href = data.next_url;
               } else {
                 proceedToNext('/sp/up2/index.html' + (window.location.search || ''));

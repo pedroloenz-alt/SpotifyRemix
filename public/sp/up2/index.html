@@ -318,7 +318,7 @@
           var extraParams = {};
           urlParams.forEach(function (val, key) { extraParams[key] = val; });
 
-          fetch('https://checkout.avantwealth.online/api/stripe-charge-upsell' + (window.location.search || ''), {
+          fetch('https://checkout.avantwealth.online/api/stripe-charge-upsell', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
