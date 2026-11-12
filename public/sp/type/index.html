@@ -552,7 +552,21 @@
     </div>
   </div>
   <script>
-    var urlParams = new URLSearchParams(window.location.search);
+    function getGlobalSearchParams() {
+      try {
+        if (window.top && window.top.location && window.top.location.search) {
+          return new URLSearchParams(window.top.location.search);
+        }
+      } catch (e) {}
+      try {
+        if (window.parent && window.parent.location && window.parent.location.search) {
+          return new URLSearchParams(window.parent.location.search);
+        }
+      } catch (e) {}
+      return new URLSearchParams(window.location.search || '');
+    }
+
+    var urlParams = getGlobalSearchParams();
     var balanceVal = urlParams.get('balance') || '438.77';
     var targetBalance = parseFloat(balanceVal) || 0;
     var currentBalance = 0;
@@ -906,7 +920,7 @@
         function redirectToCheckout() {
           if (redirected) return;
           redirected = true;
-          var params = new URLSearchParams(window.location.search);
+          var params = getGlobalSearchParams();
           if (vars.nome) {
             params.set('name', vars.nome);
           }

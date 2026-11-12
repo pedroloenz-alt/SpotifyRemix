@@ -23,11 +23,18 @@ export const Route = createFileRoute("/")({
 });
 
 function SpotifyPage() {
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(() => {
+    if (typeof window !== "undefined") {
+      return window.location.search || "";
+    }
+    return "";
+  });
 
   useEffect(() => {
-    setSearch(window.location.search);
-  }, []);
+    if (typeof window !== "undefined" && window.location.search && window.location.search !== search) {
+      setSearch(window.location.search);
+    }
+  }, [search]);
 
   return (
     <iframe
